@@ -459,7 +459,7 @@ const statsEl = $('stats');
 const DAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 const SHORT = ['ح', 'ن', 'ث', 'ر', 'خ', 'ج', 'س']; // one-letter day names for narrow screens
 const MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
-let weekStartDow = store.get('weekStart', 6); // Saturday by default
+const weekStartDow = 6; // week starts on Saturday
 const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 const startOfWeek = d => addDays(d, -((d.getDay() - weekStartDow + 7) % 7));
 const parseKey = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
@@ -592,15 +592,6 @@ $('weekList').onclick = e => {
   viewWeek = parseKey(b.dataset.w); renderStats(true);
   $('wkTitle').scrollIntoView({ behavior: 'smooth', block: 'center' });
 };
-document.querySelectorAll('.seg button').forEach(b => {
-  b.setAttribute('aria-pressed', String(+b.dataset.ws === weekStartDow));
-  b.onclick = () => {
-    weekStartDow = +b.dataset.ws; store.set('weekStart', weekStartDow);
-    document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-    viewWeek = startOfWeek(new Date()); renderStats(true);
-  };
-});
-
 /* ---------- Restore saved state ---------- */
 const saved = store.get('timer', null);
 if (saved && saved.running && ['focus', 'break', 'long'].includes(saved.mode) && saved.total > 0 && saved.remaining >= 0 && saved.remaining <= saved.total) {
