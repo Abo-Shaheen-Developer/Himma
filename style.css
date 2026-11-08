@@ -279,8 +279,8 @@ body.no-fx .salawat p{background:none!important;color:#f59e0b!important;filter:n
 
 /* ===== Entrance animation ===== */
 .sounds{--d:.05s}#notesBtn{--d:.1s}#statsBtn{--d:.14s}.tools{--d:.18s}.timer-card{--d:.1s}.achieve{--d:.22s}.todo{--d:.34s}.salawat{--d:.6s}
-body.intro .card,body.intro .sounds,body.intro .tools,body.intro .top-btn,body.intro .salawat{opacity:0}
-body:not(.intro) :is(.card,.sounds,.tools,.top-btn,.salawat){animation:rise .9s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--d,0s)}
+body.intro .card,body.intro .sounds,body.intro .tools,body.intro .top-btn,body.intro .salawat,body.intro .credit{opacity:0}
+body:not(.intro) :is(.card,.sounds,.tools,.top-btn,.salawat,.credit){animation:rise .9s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--d,0s)}
 body.hold-brand .brand{visibility:hidden}
 body.intro .tag{opacity:0}
 .tag{transition:opacity .9s .5s}
@@ -303,7 +303,7 @@ body.no-fx .seg button[aria-pressed="true"]{background:var(--accent)}
 
 /* ===== Statistics: takes the whole page while open ===== */
 .stats{width:100%;max-width:1240px;margin:0 auto}
-body.stats-open .top,body.stats-open .layout,body.stats-open .salawat{display:none}
+body.stats-open .top,body.stats-open .layout,body.stats-open .salawat,body.stats-open .credit{display:none}
 .stats-head{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;margin-bottom:16px}
 .stats-head h2{font-size:clamp(1.3rem,5vw,1.8rem);font-weight:800;text-shadow:0 0 22px var(--accent);margin-inline-end:auto}
 .st-live{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:99px;border:1px solid var(--accent);color:var(--accent);background:rgba(94,234,212,.1);font:700 .85rem 'Cairo',sans-serif;font-variant-numeric:tabular-nums}
@@ -444,3 +444,12 @@ body.no-fx .bar,body.no-fx .d-bar i,body.no-fx .tbar i{background:var(--accent)}
   opacity: 0;
   filter: blur(5px);
 }
+
+
+/* credit */
+.credit{max-width:1050px;margin:14px auto 18px;padding:0 6px;display:flex;flex-direction:column;align-items:flex-start;gap:3px;direction:rtl;--d:.7s}
+.credit-link{color:#fff;text-decoration:underline;font:600 .85rem 'Cairo',sans-serif;text-underline-offset:3px;transition:.2s}
+.credit-link:hover{opacity:.8}
+.credit-copy{color:#fff;opacity:.55;font:400 .75rem 'Cairo',sans-serif}
+[data-theme="light"] .credit-link,[data-theme="light"] .credit-copy{text-shadow:0 1px 3px rgba(20,33,61,.65)}
+@media (min-width:900px){.credit{width:100%;max-width:1240px}}
