@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://abo-shaheen-developer.github.io/Himma/sitemap.xml
