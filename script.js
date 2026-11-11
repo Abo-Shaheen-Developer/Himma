@@ -1,5 +1,5 @@
 const $ = id => document.getElementById(id);
-const C = 2 * Math.PI * 130, CA = 2 * Math.PI * 42;
+const C = 2 * Math.PI * 130, CB = 2 * Math.PI * 112, CA = 2 * Math.PI * 42;
 const store = {
   get(k, d){ try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
@@ -8,17 +8,19 @@ const pad = n => String(n).padStart(2, '0');
 const keyOf = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; // local day key: YYYY-MM-DD
 const today = () => keyOf(new Date());
 const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-3);
+const MIN = 60000;
+const clamp01 = x => Math.min(1, Math.max(0, x));
 
 const el = {
-  time: $('time'), sub: $('sub'), ring: $('ring'), mode: $('modeLabel'),
-  start: $('startBtn'),
-  brk: $('breakMin'), long: $('longMin'), every: $('longEvery'),
-  aRing: $('aRing'), aPct: $('aPct'), aTime: $('aTime'), aOf: $('aOf')
+  time: $('time'), sub: $('sub'), mode: $('modeLabel'),
+  start: $('startBtn'), next: $('nextBtn'), end: $('endBtn'), reset: $('resetBtn'),
+  fH: $('pFocusH'), fM: $('pFocusM'), bH: $('pBreakH'), bM: $('pBreakM'),
+  aRing: $('aRing'), aPct: $('aPct'), aTime: $('aTime'), aOf: $('aOf'), aTitle: $('aTitle')
 };
 
 /* ---------- Saved data ---------- */
 // history: focused milliseconds per day { 'YYYY-MM-DD': ms }. It is the single source of truth for
-// "today's achievement" and for the statistics page, and it is kept forever in this browser.
+// the statistics page and for the pomodoro "today" hours, and it is kept forever in this browser.
 let history = store.get('history', null);
 if (!history || typeof history !== 'object') {
   history = {};
@@ -26,29 +28,55 @@ if (!history || typeof history !== 'object') {
   if (old > 0 && oldDay) history[oldDay] = Math.floor(old / 1000) * 1000;
   store.set('history', history);
 }
-let histDirty = false, lastHistSave = 0;
+// the resettable achievement counter: one value shared by both systems (the statistics keep their own history)
+let counter = store.get('counter', null);
+if (typeof counter !== 'number') counter = history[today()] || 0;
+let histDirty = false, todosDirty = false, lastSave = 0;
 function saveHistory(force){
-  if (!histDirty) return;
+  if (!histDirty && !todosDirty) return;
   const n = Date.now();
-  if (force || n - lastHistSave >= 2000) { store.set('history', history); histDirty = false; lastHistSave = n; }
+  if (force || n - lastSave >= 2000) {
+    if (histDirty) { store.set('history', history); store.set('counter', counter); histDirty = false; }
+    if (todosDirty) { saveTodos(); todosDirty = false; }
+    lastSave = n;
+  }
 }
 
-// tasks: { id, text, done, min (minutes, optional), asked }
-let todos = store.get('todos', []);
-todos.forEach(t => { if (!t.id) t.id = uid(); });
+// Two apps in one page: 'tasks' (timed, splittable tasks) and 'pomo' (a plain pomodoro clock with simple tasks).
+let appMode = store.get('appMode', 'tasks');
+if (appMode !== 'tasks' && appMode !== 'pomo') appMode = 'tasks';
+
+// tasks mode: { id, text, done, min (total minutes), parts (how many pieces), brk (break minutes between pieces),
+//               spent (focused ms so far), part (index of the piece that is next / running) }
+const rawTodos = store.get('todos', []);
+let todos = rawTodos.filter(t => t.min);
+todos.forEach(t => {
+  if (!t.id) t.id = uid();
+  t.parts = Math.max(1, Math.min(12, parseInt(t.parts) || 1));
+  t.brk = Math.max(0, parseInt(t.brk) || 0);
+  t.spent = typeof t.spent === 'number' ? t.spent : (t.done ? t.min * MIN : 0);
+  t.part = Math.min(t.parts - 1, Math.max(0, parseInt(t.part) || 0));
+});
+// pomodoro mode: simple { id, text, done }. Old tasks that had no time live here now.
+let ptodos = store.get('ptodos', []);
+rawTodos.filter(t => !t.min).forEach(t => ptodos.push({ id: t.id || uid(), text: t.text, done: !!t.done }));
+ptodos.forEach(t => { if (!t.id) t.id = uid(); });
 let activeId = store.get('activeTask', null); // the task the next focus period is made for
 const saveTodos = () => store.set('todos', todos);
+const savePTodos = () => store.set('ptodos', ptodos);
 const taskById = id => todos.find(t => t.id === id);
 
 const s = {
-  mode: 'focus', running: false, paused: false,
-  remaining: 0, total: 0, last: 0, timer: null, cycle: 0, waiting: false,
-  taskId: null,   // task attached to the current focus period
-  credited: 0,    // whole seconds of this focus period already added to the achievement
+  mode: 'focus',              // the phase: 'focus' | 'break'
+  running: false, paused: false, waiting: false,
+  finished: false,            // a task has just been completed (dial at zero, "start the new task" shown)
+  remaining: 0, total: 0, last: 0, timer: null,
+  taskId: null,               // task the running session belongs to (tasks mode)
+  credited: 0,                // whole seconds of this focus period already added to the totals
   achieved: history[today()] || 0 // ms, today
 };
 
-// The achievement counter is per day: it starts again from zero on a new day
+// The pomodoro "today" counter is per day: it starts again from zero on a new day
 let achievedDate = today();
 let autoFocus = store.get('autoFocus', false); // start focus automatically after a break (off by default)
 let autoBreak = store.get('autoBreak', true);  // start a break automatically after focus (on by default)
@@ -62,6 +90,7 @@ function addFocus(ms){
   dayCheck();
   history[achievedDate] = (history[achievedDate] || 0) + ms;
   s.achieved = history[achievedDate];
+  counter += ms;
   histDirty = true;
 }
 
@@ -121,66 +150,122 @@ $('themeBtn').onclick = () => {
 };
 
 /* ---------- Helpers ---------- */
-const clampMin = (input, def, max) => Math.min(max, Math.max(1, parseInt(input.value) || def));
-const every = () => Math.min(12, Math.max(2, parseInt(el.every.value) || 4));
 const shorten = (t, n = 26) => t.length > n ? t.slice(0, n - 1) + '…' : t;
+const fmtClock = secs => secs >= 3600
+  ? `${Math.floor(secs / 3600)}:${pad(Math.floor(secs % 3600 / 60))}:${pad(secs % 60)}`
+  : `${pad(Math.floor(secs / 60))}:${pad(secs % 60)}`;
+// hours + minutes boxes → minutes (empty boxes → the default)
+const hmMin = (h, m, def) => (h.value === '' && m.value === '') ? def : Math.min(1440, Math.max(0, (parseInt(h.value) || 0) * 60 + (parseInt(m.value) || 0)));
+const pomoFocusMs = () => (hmMin(el.fH, el.fM, 25) || 1) * MIN;
+const pomoBreakMs = () => hmMin(el.bH, el.bM, 5) * MIN;
 
-// The focus length comes from the chosen task (its "I'll finish it within" time); 25 min if there is none.
+// A task of T minutes split into N pieces: every piece lasts T/N (rounded to whole seconds, the last one takes the remainder).
+const taskMs = t => t.min * MIN;
+const baseMs = t => Math.round(taskMs(t) / t.parts / 1000) * 1000;
+const partStart = (t, i) => i * baseMs(t);
+const partMs = (t, i) => i >= t.parts - 1 ? taskMs(t) - (t.parts - 1) * baseMs(t) : baseMs(t);
+const taskProg = t => t.done ? taskMs(t) : Math.min(taskMs(t), t.spent);
+
 function activeTask(){
-  const timed = todos.filter(t => !t.done && t.min);
-  return timed.find(t => t.id === activeId) || timed[0] || null;
+  const open = todos.filter(t => !t.done);
+  return open.find(t => t.id === activeId) || open[0] || null;
 }
-const duration = mode => (mode === 'focus' ? ((activeTask() || {}).min || 0) : mode === 'long' ? clampMin(el.long, 15, 120) : clampMin(el.brk, 5, 60)) * 60000;
-const lockedSel = () => s.running && s.mode === 'focus' && !s.waiting; // a focus period is counting (or paused midway)
+// the task the dial is showing: the running / just-finished one, otherwise the chosen one
+const curTask = () => appMode !== 'tasks' ? null : ((s.running || s.finished) ? (taskById(s.taskId) || null) : activeTask());
+const phaseMs = mode => {
+  if (appMode === 'pomo') return mode === 'focus' ? pomoFocusMs() : pomoBreakMs();
+  const t = curTask(); if (!t) return 0;
+  return mode === 'focus' ? partMs(t, t.part) : t.brk * MIN;
+};
+const lockedSel = () => s.running && !s.paused; // a period is counting right now
 
 function subText(){
-  if (!s.running) { const t = activeTask(); return t ? `جاهز للبدء • ${shorten(t.text)}` : 'أضف مهمة بوقت لتبدأ'; }
-  if (s.paused && s.waiting) return s.mode === 'focus' ? 'انتهت الراحة • اضغط بدء للتركيز' : 'انتهى التركيز • اضغط بدء للراحة';
+  const t = curTask(), multi = t && t.parts > 1, piece = multi ? ` • الجزء ${t.part + 1} من ${t.parts}` : '';
+  if (appMode === 'tasks') {
+    if (s.finished) return activeTask() ? 'أنهيت المهمة • ابدأ مهمة جديدة' : 'أنجزت كل مهامك';
+    if (!s.running) return t ? `جاهز للبدء • ${shorten(t.text)}${piece}` : 'أضف مهمة لتبدأ';
+  } else if (!s.running) return 'جاهز للبدء';
+  if (s.paused && s.waiting) return s.mode === 'focus' ? `انتهت الراحة • اضغط بدء للتركيز${piece}` : 'انتهى التركيز • اضغط بدء للراحة';
   if (s.paused) return 'متوقف مؤقتاً';
-  if (s.mode === 'focus') return `ركّز على مهمتك • الدورة ${s.cycle % every() + 1} من ${every()}`;
-  return s.mode === 'long' ? 'استراحة طويلة، استرح جيداً' : 'خذ قسطاً من الراحة';
+  if (s.mode === 'focus') return appMode === 'tasks' ? `ركّز على مهمتك${piece}` : 'ركّز';
+  return 'خذ قسطاً من الراحة';
 }
 
+const timerKey = () => 'timer_' + appMode;
 function saveTimer(){
-  store.set('timer', { mode: s.mode, running: s.running, paused: s.paused, remaining: s.remaining, total: s.total, cycle: s.cycle, waiting: s.waiting, taskId: s.taskId });
+  store.set(timerKey(), { mode: s.mode, running: s.running, paused: s.paused, finished: s.finished, remaining: s.remaining, total: s.total, waiting: s.waiting, taskId: s.taskId });
+}
+
+/* ---------- The dial: one arc per piece of the task, a thin yellow ring for the rest time ---------- */
+const NS = 'http://www.w3.org/2000/svg';
+const ringG = $('ringG'), brkT = $('brkT'), brkR = $('brkR');
+let arcs = [], ringKey = '';
+brkR.style.strokeDasharray = `0 ${CB}`;
+function mk(tag, attrs){ const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+function buildRing(n){
+  ringG.textContent = ''; arcs = [];
+  const gap = n > 1 ? 20 : 0, cap = n > 1 ? 7 : 0;                 // gap between arcs, half a stroke for the round caps
+  const L = n > 1 ? Math.max(2, C / n - gap - 14) : C;             // visible dash length of one arc
+  for (let i = 0; i < n; i++) {
+    const rot = n > 1 ? -90 + (i * C / n + gap / 2 + cap) / C * 360 : -90;
+    const a = { cx: 150, cy: 150, r: 130, transform: `rotate(${rot} 150 150)` };
+    const tr = mk('circle', { ...a, class: 'track' }), pr = mk('circle', { ...a, class: 'ring' });
+    tr.style.strokeDasharray = `${L} ${C}`; pr.style.strokeDasharray = `0 ${C}`;
+    if (n > 1) tr.style.strokeLinecap = 'round';
+    ringG.append(tr, pr); arcs.push({ pr, L });
+  }
+}
+function drawRing(){
+  const t = curTask(), n = t ? t.parts : 1, key = appMode + n;
+  if (key !== ringKey) { ringKey = key; buildRing(n); }
+  const elapsed = s.total ? clamp01(1 - s.remaining / s.total) : 0;
+  arcs.forEach((a, i) => {
+    let p = 0;
+    if (appMode === 'tasks') p = t ? clamp01((taskProg(t) - partStart(t, i)) / partMs(t, i)) : 0;
+    else p = s.running ? elapsed : 0;
+    a.pr.style.strokeDasharray = `${a.L * p} ${C}`;
+    a.pr.style.opacity = p > .002 ? 1 : 0;
+  });
+  const showBrk = appMode === 'tasks' && s.running && s.mode === 'break';
+  brkT.style.display = brkR.style.display = showBrk ? '' : 'none';
+  brkR.style.strokeDasharray = `${showBrk ? CB * elapsed : 0} ${CB}`;
 }
 
 function render(){
-  const secs = Math.ceil(Math.max(0, s.remaining) / 1000);
-  const noTask = !s.running && !s.total; // nothing to focus on yet
-  el.time.textContent = noTask ? 'أضف مهمة للبدء' : `${pad(Math.floor(secs / 60))}:${pad(secs % 60)}`;
-  el.time.classList.toggle('idle', noTask);
-  const clock = `${pad(Math.floor(secs / 60))}:${pad(secs % 60)}`;
-  const elapsed = s.total ? 1 - s.remaining / s.total : 0;
-  el.ring.style.strokeDasharray = C;
-  el.ring.style.strokeDashoffset = C * (1 - Math.min(1, Math.max(0, elapsed)));
+  const ms = s.finished ? 0 : (!s.running ? phaseMs('focus') : Math.max(0, s.remaining));
+  const secs = Math.ceil(ms / 1000), clock = fmtClock(secs);
+  el.time.textContent = clock;
+  el.time.classList.toggle('long', clock.length > 5);
+  drawRing();
   document.title = s.running ? `${clock} • ${s.mode === 'focus' ? 'تركيز' : 'راحة'}` : 'همّة | مساعدك في الدراسة';
   renderAchieve();
   updateTaskBars();
   if (!statsEl.hidden) statsTick();
 }
 
-// The ring is today's focused time as a share of the total time of all the tasks.
-const totalTaskMs = () => todos.reduce((a, t) => a + (t.min || 0), 0) * 60000;
+// tasks mode: the ring is the finished share of ALL the tasks' time (and the same time in hours);
+// pomodoro mode: only hours, no percentage.
 function renderAchieve(){
   dayCheck();
-  const t = Math.floor(s.achieved / 1000), goal = totalTaskMs();
+  const tasks = appMode === 'tasks';
+  let ms = counter, p = 0;
+  if (tasks) {
+    const goal = todos.reduce((a, t) => a + taskMs(t), 0);
+    p = goal ? clamp01(todos.reduce((a, t) => a + taskProg(t), 0) / goal) : 0;
+    el.aOf.textContent = goal ? `من ${fmtMin(goal / MIN)} (مجموع وقت مهامك)` : 'أضف مهامًا بوقت ليظهر تقدمك';
+  } else el.aOf.textContent = 'مجموع ساعات التركيز';
+  el.aTitle.textContent = tasks ? 'تقدّمك في المهام' : 'إنجازك';
+  const t = Math.floor(ms / 1000);
   el.aTime.textContent = `${pad(Math.floor(t / 3600))}:${pad(Math.floor(t % 3600 / 60))}:${pad(t % 60)}`;
-  const p = goal ? Math.min(1, s.achieved / goal) : 0;
   el.aPct.textContent = Math.round(p * 100) + '%';
-  el.aOf.textContent = goal ? `من ${fmtMin(goal / 60000)} (مجموع وقت مهامك)` : 'أضف مهامًا بوقت ليظهر تقدمك';
   el.aRing.style.strokeDashoffset = CA * (1 - p);
 }
 
 function setMode(mode, keep){
   s.mode = mode;
-  if (!keep) {
-    s.total = s.remaining = duration(mode);
-    s.credited = 0;
-    s.taskId = mode === 'focus' ? ((activeTask() || {}).id || null) : null;
-  }
+  if (!keep) { s.total = s.remaining = phaseMs(mode); s.credited = 0; }
   document.body.classList.toggle('break', mode !== 'focus');
-  el.mode.textContent = mode === 'focus' ? 'تركيز' : mode === 'long' ? 'استراحة طويلة' : 'استراحة';
+  el.mode.textContent = mode === 'focus' ? 'تركيز' : 'استراحة';
   el.sub.textContent = subText();
   renderTodos();
 }
@@ -244,24 +329,55 @@ function setSound(name, on){
 }
 document.querySelectorAll('.snd').forEach(b => b.onclick = () => setSound(b.dataset.sound, !live[b.dataset.sound]));
 
+
 /* ---------- Timer ---------- */
 function tick(){
   if (!s.running || s.paused) return;
   const now = Date.now(), d = now - s.last; s.last = now;
   s.remaining -= d;
   if (s.mode === 'focus') {
-    // The achievement is credited in whole seconds, exactly when the dial's seconds change, so the two always agree.
+    // Progress is credited in whole seconds, exactly when the dial's seconds change, so the two always agree.
     const e = Math.min(Math.floor(s.total / 1000), Math.max(0, Math.floor((s.total - s.remaining) / 1000)));
-    if (e > s.credited) { addFocus((e - s.credited) * 1000); s.credited = e; }
+    if (e > s.credited) {
+      const inc = (e - s.credited) * 1000; addFocus(inc); s.credited = e;
+      const t = appMode === 'tasks' ? taskById(s.taskId) : null;
+      if (t) { t.spent = Math.max(t.spent, partStart(t, t.part) + e * 1000); todosDirty = true; } // a replayed piece never counts twice
+    }
   }
-  if (s.remaining <= 0){
-    chime();
-    if (s.mode === 'focus') { endFocusTask(); s.cycle++; setMode(s.cycle % every() === 0 ? 'long' : 'break'); }
-    else { if (!activeTask()) { fullReset(); return; } setMode('focus'); } // no task left: back to waiting
-    if (!(s.mode === 'focus' ? autoFocus : autoBreak)) { s.paused = true; s.waiting = true; ui(); } // wait for the user
-    else if (s.mode === 'focus') beginFocusTask();
-  }
+  if (s.remaining <= 0) phaseEnd();
   render(); saveTimer(); saveHistory();
+}
+
+// go to the next phase; wait for the user unless the matching "start automatically" switch is on
+function enter(mode){
+  setMode(mode);
+  if (!(mode === 'focus' ? autoFocus : autoBreak)) { s.paused = true; s.waiting = true; ui(); }
+}
+
+function phaseEnd(){
+  chime();
+  if (s.mode === 'break') return enter('focus');
+  // a focus period ended
+  if (appMode === 'tasks') {
+    const t = taskById(s.taskId);
+    if (t) {
+      t.spent = Math.max(t.spent, partStart(t, t.part) + partMs(t, t.part)); todosDirty = true;
+      if (t.part >= t.parts - 1) return finishTask(t);   // that was the last piece
+      t.part++; saveTodos();
+      return t.brk ? enter('break') : enter('focus');    // no rest time set: straight to the next piece
+    }
+  }
+  return pomoBreakMs() ? enter('break') : enter('focus');
+}
+
+// the task is complete: the dial goes to zero and "start the new task" appears
+function finishTask(t){
+  clearInterval(s.timer);
+  t.done = true; t.spent = taskMs(t); saveTodos(); todosDirty = false;
+  if (activeId === t.id) { activeId = null; store.set('activeTask', null); }
+  s.running = false; s.paused = false; s.waiting = false; s.finished = true;
+  setMode('focus', true); s.remaining = 0;
+  ui(); renderTodos();
 }
 
 function run(){
@@ -271,54 +387,88 @@ function run(){
 }
 
 function start(){
-  if (!activeTask()) return;
+  const t = appMode === 'tasks' ? activeTask() : null;
+  if (appMode === 'tasks' && !t) return;
   audio();
-  s.running = true; s.paused = false; s.waiting = false; s.cycle = 0;
+  s.finished = false; s.running = true; s.paused = false; s.waiting = false;
+  s.taskId = t ? t.id : null;
+  if (t) { t.spent = Math.max(t.spent, partStart(t, t.part)); todosDirty = true; }
   setMode('focus');
-  beginFocusTask();
   run(); ui(); render(); saveTimer();
 }
 
 function togglePause(){
   s.paused = !s.paused;
-  if (!s.paused) { s.last = Date.now(); if (s.waiting) { s.waiting = false; beginFocusTask(); } } // paused time is never counted
+  if (!s.paused) { s.last = Date.now(); s.waiting = false; } // paused time is never counted
   ui(); render(); saveTimer();
 }
 
-function fullReset(){
+// stop the session and go back to "ready" (progress already earned is kept)
+function endSession(){
   clearInterval(s.timer);
-  s.running = false; s.paused = false; s.waiting = false; s.cycle = 0;
+  s.running = false; s.paused = false; s.waiting = false; s.finished = false;
   setMode('focus');
   ui(); render(); saveTimer();
 }
 
+function resetTimer(){
+  if (!s.running) return;
+  if (appMode === 'tasks') { // only the timer: the piece goes back to its beginning, progress already earned stays
+    const t = taskById(s.taskId);
+    endSession(); renderTodos();
+  } else {                   // pomodoro: the current period goes back to its full length, paused
+    s.remaining = s.total; s.credited = 0; s.paused = true; s.last = Date.now();
+    ui(); render(); saveTimer();
+  }
+}
+
 function ui(){
+  const tasks = appMode === 'tasks', t = curTask(), open = activeTask();
+  el.start.hidden = tasks && s.finished;
+  el.next.hidden = !(tasks && s.finished && open);
+  el.end.hidden = tasks;
   const b = el.start;
-  b.disabled = !s.running && !activeTask();
+  b.disabled = !s.running && tasks && !open;
   if (!s.running) { b.textContent = 'بدء'; b.className = 'main-btn go'; }
   else if (s.paused) { b.textContent = s.waiting ? 'بدء' : 'استئناف'; b.className = 'main-btn go'; }
   else { b.textContent = 'إيقاف مؤقت'; b.className = 'main-btn stop'; }
+  el.end.disabled = !s.running;
+  el.reset.disabled = !s.running;
   el.sub.textContent = subText();
   if (lockedSel() !== lastLock) renderTodos(); // the "choose" buttons appear / disappear with the lock
 }
 
 el.start.onclick = () => s.running ? togglePause() : start();
+el.next.onclick = () => { s.finished = false; start(); };
+el.end.onclick = endSession;
+el.reset.onclick = resetTimer;
+// reset the achievement counter (and the tasks' progress that the percentage is made of), after a warning
+const cf = $('confirm');
+const closeConfirm = () => { cf.hidden = true; $('clearAch').focus({ preventScroll: true }); };
+$('clearAch').onclick = () => { cf.hidden = false; $('cfNo').focus({ preventScroll: true }); };
+cf.addEventListener('click', e => { if (e.target.closest('[data-close]')) closeConfirm(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !cf.hidden) closeConfirm(); });
+$('cfYes').onclick = () => {
+  closeConfirm();
+  counter = 0; store.set('counter', 0);
+  todos.forEach(t => { t.spent = 0; t.part = 0; t.done = false; });
+  if (appMode === 'tasks' && s.running) endSession();
+  saveTodos(); todosDirty = false; renderTodos(); retarget();
+};
 
-/* ---------- Settings ---------- */
-const settingInputs = [[el.brk, 'breakMin', 5], [el.long, 'longMin', 15], [el.every, 'longEvery', 4]];
-settingInputs.forEach(([inp, key, def]) => inp.value = store.get(key, def));
-
-[el.brk, el.long, el.every].forEach(i => {
-  i.addEventListener('input', () => store.set(settingInputs.find(x => x[0] === i)[1], i.value));
-  i.addEventListener('change', () => {
-    const m = i === el.brk ? 'break' : i === el.long ? 'long' : null;
+/* ---------- Pomodoro settings: focus / rest as hours + minutes ---------- */
+const pInputs = [[el.fH, 'pFocusH', 0], [el.fM, 'pFocusM', 25], [el.bH, 'pBreakH', 0], [el.bM, 'pBreakM', 5]];
+pInputs.forEach(([inp, key, def]) => inp.value = store.get(key, def));
+pInputs.forEach(([inp, key]) => {
+  inp.addEventListener('input', () => { store.set(key, inp.value); if (appMode === 'pomo' && !s.running) render(); });
+  inp.addEventListener('change', () => {
+    if (appMode !== 'pomo') return;
     if (!s.running) setMode('focus');
-    else if (m && m === s.mode) { // changing the active period's length applies now
-      const d = duration(s.mode); s.remaining = Math.max(0, s.remaining + d - s.total); s.total = d;
-    }
+    else { const d = phaseMs(s.mode); s.remaining = Math.max(0, s.remaining + d - s.total); s.total = d; } // changing the active period's length applies now
     render(); saveTimer();
   });
 });
+
 /* ---------- Settings drawer ---------- */
 const drawer = $('drawer'), overlay = $('overlay'), notes = $('notes');
 function toggleDrawer(open){
@@ -344,60 +494,79 @@ cFx.onchange = () => { fx = cFx.checked; store.set('fx', fx); document.body.clas
 notes.value = store.get('notes', '');
 notes.addEventListener('input', () => store.set('notes', notes.value));
 
-/* ---------- Todo (each task can carry "I'll finish it within N minutes") ---------- */
+
+/* ---------- Tasks ---------- */
 const fmtMin = m => m >= 60 ? `${Math.floor(m / 60)}س${m % 60 ? ' ' + (m % 60) + 'د' : ''}` : `${m}د`;
 let taskEls = {}, lastLock = null, justAdded = null;
 
 function renderTodos(){
-  const ul = $('todoList'), st = ul.scrollTop;
+  const ul = $('todoList'), st = ul.scrollTop, tasks = appMode === 'tasks';
   ul.innerHTML = ''; taskEls = {};
-  $('empty').style.display = todos.length ? 'none' : 'block';
-  const locked = lastLock = lockedSel(), act = activeTask();
-  const curId = locked ? s.taskId : act && act.id;
-  const timedCount = todos.filter(t => !t.done && t.min).length;
+  const list = tasks ? todos : ptodos;
+  $('empty').style.display = list.length ? 'none' : 'block';
+  $('empty').textContent = tasks ? 'لا توجد مهام بعد. اضغط «إضافة مهمة» وابدأ.' : 'لا توجد مهام بعد. اكتب أول مهمة وابدأ.';
+  const locked = lastLock = lockedSel(), cur = curTask(), curId = cur && cur.id;
 
-  todos.forEach(t => {
+  list.forEach(t => {
     const li = document.createElement('li');
-    li.className = [t.done && 'done', !t.done && t.id === curId && t.min && 'current', t.id === justAdded && 'new'].filter(Boolean).join(' ');
+    li.className = [t.done && 'done', tasks && !t.done && t.id === curId && 'current', t.id === justAdded && 'new'].filter(Boolean).join(' ');
     const row = document.createElement('div'); row.className = 'trow';
     const c = document.createElement('input'); c.type = 'checkbox'; c.className = 'chk'; c.checked = t.done;
     c.setAttribute('aria-label', 'إنجاز المهمة');
-    c.onchange = () => { t.done = c.checked; t.asked = false; saveTodos(); renderTodos(); retarget(); };
     const sp = document.createElement('span'); sp.className = 'ttxt'; sp.textContent = t.text;
+    const meta = document.createElement('div'); meta.className = 'tmeta';
     row.append(c, sp);
-    if (t.min) {
-      const chip = document.createElement('span'); chip.className = 'tchip'; chip.textContent = '⏱ ' + fmtMin(t.min); row.append(chip);
-      if (!t.done && timedCount > 1) {
-        if (t.id === curId) { const b = document.createElement('span'); b.className = 'tcur'; b.textContent = 'الحالية'; row.append(b); }
+
+    if (tasks) {
+      c.onchange = () => {
+        t.done = c.checked;
+        if (t.done && s.running && s.taskId === t.id) endSession();
+        if (!t.done) { t.spent = 0; t.part = 0; }   // un-ticking starts the task over
+        saveTodos(); renderTodos(); retarget();
+      };
+      const chip = document.createElement('span'); chip.className = 'tchip'; chip.textContent = '⏱ ' + fmtMin(t.min); meta.append(chip);
+      if (t.parts > 1) {
+        const pc = document.createElement('span'); pc.className = 'tchip parts';
+        pc.textContent = `${t.parts} أجزاء${t.brk ? ' • راحة ' + fmtMin(t.brk) : ''}`; meta.append(pc);
+      }
+      const openCount = todos.filter(x => !x.done).length;
+      if (!t.done && openCount > 1) {
+        if (t.id === curId) { const b = document.createElement('span'); b.className = 'tcur'; b.textContent = 'الحالية'; meta.append(b); }
         else if (!locked) {
           const b = document.createElement('button'); b.className = 'tsel'; b.textContent = 'اختيار'; b.title = 'اجعلها مهمة التركيز القادمة';
-          b.onclick = () => { activeId = t.id; store.set('activeTask', activeId); renderTodos(); retarget(); };
-          row.append(b);
+          b.onclick = () => {
+            if (s.running) endSession(); // leave the paused task where it is
+            activeId = t.id; store.set('activeTask', activeId); s.finished = false; renderTodos(); retarget();
+          };
+          meta.append(b);
         }
       }
+    } else {
+      c.onchange = () => { t.done = c.checked; savePTodos(); renderTodos(); };
     }
+
     const d = document.createElement('button'); d.className = 'del'; d.textContent = '×'; d.setAttribute('aria-label', 'حذف');
     d.onclick = () => {
-      todos.splice(todos.indexOf(t), 1); saveTodos();
-      if (s.taskId === t.id) { s.taskId = null; saveTimer(); }
+      list.splice(list.indexOf(t), 1);
+      if (tasks) {
+        saveTodos();
+        if (s.taskId === t.id) { if (s.running) endSession(); s.taskId = null; s.finished = false; saveTimer(); }
+      } else savePTodos();
       renderTodos(); retarget();
     };
     row.append(d); li.append(row);
+    if (meta.children.length) li.append(meta);
 
-    if (t.min && !t.done) { // the bar that shrinks while this task's focus period runs
-      const bar = document.createElement('div'); bar.className = 'tbar'; bar.hidden = true;
-      const trk = document.createElement('div'); trk.className = 'trk'; const fill = document.createElement('i'); trk.append(fill);
-      const tx = document.createElement('small'); bar.append(trk, tx); li.append(bar);
-      taskEls[t.id] = { bar, fill, tx };
-    }
-    if (t.asked && !t.done) { // time is up: did you finish?
-      const q = document.createElement('div'); q.className = 'task-q';
-      const msg = document.createElement('b'); msg.textContent = 'هل أنجزت مهمتك ؟';
-      const yes = document.createElement('button'); yes.className = 'q-btn yes'; yes.textContent = 'نعم';
-      const no = document.createElement('button'); no.className = 'q-btn'; no.textContent = 'ليس بعد';
-      yes.onclick = () => { t.done = true; t.asked = false; saveTodos(); renderTodos(); retarget(); };
-      no.onclick = () => { t.asked = false; saveTodos(); renderTodos(); };
-      q.append(msg, yes, no); li.append(q);
+    if (tasks) { // progress bar under the task: one segment per piece
+      const bar = document.createElement('div'); bar.className = 'tbar';
+      const segs = document.createElement('div'); segs.className = 'segbar';
+      const fills = [];
+      for (let i = 0; i < t.parts; i++) {
+        const sg = document.createElement('div'); sg.className = 'sg'; sg.style.flexGrow = partMs(t, i);
+        const f = document.createElement('i'); sg.append(f); segs.append(sg); fills.push(f);
+      }
+      const tx = document.createElement('small'); bar.append(segs, tx); li.append(bar);
+      taskEls[t.id] = { fills, tx };
     }
     ul.append(li);
   });
@@ -406,53 +575,99 @@ function renderTodos(){
 }
 
 function updateTaskBars(){
-  const on = s.running && s.mode === 'focus';
   for (const id in taskEls) {
-    const e = taskEls[id], mine = on && s.taskId === id;
-    e.bar.hidden = !mine;
-    if (!mine) continue;
-    const rem = Math.max(0, s.remaining), p = s.total ? rem / s.total : 0, secs = Math.ceil(rem / 1000);
-    e.fill.style.width = (p * 100) + '%';
-    e.bar.classList.toggle('low', p <= .2);
-    e.tx.textContent = `${pad(Math.floor(secs / 60))}:${pad(secs % 60)}`;
+    const t = taskById(id); if (!t) continue;
+    const e = taskEls[id], prog = taskProg(t);
+    e.fills.forEach((f, i) => f.style.width = clamp01((prog - partStart(t, i)) / partMs(t, i)) * 100 + '%');
+    e.tx.textContent = Math.floor(prog / taskMs(t) * 100) + '%';
   }
 }
 
-// a focus period starts / ends for the attached task
-function beginFocusTask(){
-  const t = s.mode === 'focus' && taskById(s.taskId);
-  if (t && t.asked) { t.asked = false; saveTodos(); renderTodos(); }
-}
-function endFocusTask(){
-  const t = taskById(s.taskId);
-  if (t && !t.done) { t.asked = true; saveTodos(); }
-}
-// the focus length follows the chosen task while nothing is counting
+// the dial follows the chosen task while nothing is counting
 function retarget(){
-  if (lockedSel()) return;
-  if (s.mode === 'focus') setMode('focus');
+  if (s.running) return;
+  if (s.finished && !taskById(s.taskId)) s.finished = false;
+  setMode('focus');
   render(); ui(); saveTimer();
 }
 
-const todoIn = $('todoInput'), todoH = $('todoH'), todoMin = $('todoMin'), addBtn = $('addBtn');
-const taskMinutes = () => Math.min(720, (parseInt(todoH.value) || 0) * 60 + (parseInt(todoMin.value) || 0));
-todoIn.addEventListener('input', () => { addBtn.hidden = !todoIn.value.trim(); }); // the + button appears only once something is typed
-function addTodo(){
-  const v = todoIn.value.trim(); if (!v) return;
-  const min = taskMinutes();
-  if (!min) { // every task needs its time
-    const box = todoH.closest('.add-time'); box.classList.remove('bad'); void box.offsetWidth; box.classList.add('bad');
-    todoMin.focus(); return;
-  }
-  const t = { id: uid(), text: v, done: false, min };
-  todos.unshift(t); justAdded = t.id; saveTodos();
-  if (!lockedSel()) { activeId = t.id; store.set('activeTask', activeId); } // the new task becomes the current one
-  todoIn.value = todoH.value = todoMin.value = ''; addBtn.hidden = true;
-  renderTodos(); retarget();
+/* tasks mode: the add-task box (name, time in hours + minutes, split into pieces, rest between them) */
+const tf = { form: $('taskForm'), name: $('tfName'), h: $('tfH'), m: $('tfM'), parts: $('tfParts'), brk: $('tfBrk'), brkWrap: $('tfBrkWrap') };
+const shake = box => { box.classList.remove('bad'); void box.offsetWidth; box.classList.add('bad'); };
+const clearBad = e => e.target.closest('.bad') && e.target.closest('.bad').classList.remove('bad');
+function toggleTaskForm(open){
+  tf.form.hidden = !open;
+  $('addToggle').setAttribute('aria-expanded', String(open));
+  if (open) tf.name.focus();
 }
-addBtn.onclick = addTodo;
-[todoH, todoMin].forEach(i => i.addEventListener('input', () => todoH.closest('.add-time').classList.remove('bad')));
-[todoIn, todoH, todoMin].forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); }));
+$('addToggle').onclick = () => toggleTaskForm(tf.form.hidden);
+$('tfCancel').onclick = () => toggleTaskForm(false);
+tf.parts.addEventListener('input', () => { tf.brkWrap.hidden = (parseInt(tf.parts.value) || 1) < 2; });
+tf.form.addEventListener('input', clearBad);
+tf.form.addEventListener('keydown', e => { if (e.key === 'Escape') toggleTaskForm(false); });
+tf.form.onsubmit = e => {
+  e.preventDefault();
+  const text = tf.name.value.trim(), min = Math.min(1440, (parseInt(tf.h.value) || 0) * 60 + (parseInt(tf.m.value) || 0));
+  if (!text) { shake(tf.name); tf.name.focus(); return; }
+  if (!min) { shake(tf.h.closest('.hm')); tf.m.focus(); return; } // every task needs its time
+  const parts = Math.max(1, Math.min(12, min, parseInt(tf.parts.value) || 1)); // a piece is never shorter than a minute
+  const brk = parts > 1 ? Math.max(0, Math.min(240, parseInt(tf.brk.value) || 0)) : 0;
+  const t = { id: uid(), text, done: false, min, parts, brk, spent: 0, part: 0 };
+  todos.push(t); justAdded = t.id; saveTodos();
+  tf.name.value = tf.h.value = tf.m.value = ''; tf.parts.value = 1; tf.brk.value = 5; tf.brkWrap.hidden = true;
+  toggleTaskForm(false);
+  renderTodos(); retarget();
+};
+
+/* pomodoro mode: a task is only a name and a tick */
+const todoIn = $('todoInput');
+function addSimple(){
+  const v = todoIn.value.trim(); if (!v) return;
+  const t = { id: uid(), text: v, done: false };
+  ptodos.unshift(t); justAdded = t.id; savePTodos();
+  todoIn.value = ''; $('addBtn').hidden = true;
+  renderTodos();
+}
+todoIn.addEventListener('input', () => { $('addBtn').hidden = !todoIn.value.trim(); });
+$('addBtn').onclick = addSimple;
+todoIn.addEventListener('keydown', e => { if (e.key === 'Enter') addSimple(); });
+
+/* ---------- Switching between the two systems ---------- */
+function applyAppMode(){
+  const tasks = appMode === 'tasks', b = document.body;
+  b.classList.toggle('m-tasks', tasks); b.classList.toggle('m-pomo', !tasks);
+  $('pomoSet').hidden = tasks;
+  $('addToggle').hidden = !tasks; if (!tasks) tf.form.hidden = true;
+  $('simpleForm').hidden = tasks;
+  $('modeDesc').textContent = tasks ? 'أضف مهام وقسّمها وضع لها وقت محدد' : 'استخدم مؤقت البومودورو في المهام التي لا تعرف متى ستنهيها';
+  $('modeBtn').textContent = tasks ? 'استخدام ساعة البومودورو بدلًا من هذا' : 'استخدام وضع المهام بدلًا من هذا';
+}
+function loadTimer(){
+  clearInterval(s.timer);
+  Object.assign(s, { mode: 'focus', running: false, paused: false, waiting: false, finished: false, taskId: null, credited: 0 });
+  const sv = store.get(timerKey(), null), tk = sv && taskById(sv.taskId);
+  if (sv && sv.running && ['focus', 'break'].includes(sv.mode) && sv.total > 0 && sv.remaining >= 0 && sv.remaining <= sv.total && (appMode === 'pomo' || (tk && !tk.done))) {
+    s.mode = sv.mode; s.total = sv.total; s.remaining = sv.remaining;
+    s.running = true; s.paused = true; s.waiting = !!sv.waiting; // reopening always comes back paused, ready to resume
+    s.taskId = appMode === 'tasks' ? sv.taskId : null;
+    s.credited = s.mode === 'focus' ? Math.max(0, Math.floor((s.total - s.remaining) / 1000)) : 0;
+    if (tk && s.mode === 'focus') tk.spent = Math.max(tk.spent, partStart(tk, tk.part) + s.credited * 1000);
+    setMode(s.mode, true);
+    run(); // continues from the exact point it was left at
+  } else {
+    if (appMode === 'tasks' && sv && sv.finished && tk) { s.finished = true; s.taskId = sv.taskId; }
+    setMode('focus', s.finished);
+    if (s.finished) s.remaining = s.total = 0;
+  }
+  ui(); render(); renderTodos();
+}
+$('modeBtn').onclick = () => {
+  tick(); // credit what has been counted so far
+  if (s.running && !s.paused) s.paused = true;
+  saveTimer(); saveHistory(true); clearInterval(s.timer);
+  appMode = appMode === 'tasks' ? 'pomo' : 'tasks'; store.set('appMode', appMode);
+  applyAppMode(); loadTimer();
+};
 
 /* ---------- Statistics ---------- */
 const statsEl = $('stats');
@@ -593,18 +808,8 @@ $('weekList').onclick = e => {
   $('wkTitle').scrollIntoView({ behavior: 'smooth', block: 'center' });
 };
 /* ---------- Restore saved state ---------- */
-const saved = store.get('timer', null);
-if (saved && saved.running && ['focus', 'break', 'long'].includes(saved.mode) && saved.total > 0 && saved.remaining >= 0 && saved.remaining <= saved.total) {
-  s.mode = saved.mode; s.total = saved.total; s.remaining = saved.remaining;
-  s.cycle = saved.cycle || 0; s.running = true; s.paused = true; s.waiting = !!saved.waiting; // reopening always comes back paused, ready to resume
-  s.taskId = s.mode === 'focus' && taskById(saved.taskId) ? saved.taskId : null;
-  s.credited = s.mode === 'focus' ? Math.max(0, Math.floor((s.total - s.remaining) / 1000)) : 0;
-  setMode(s.mode, true);
-  run(); // continues from the exact point it was left at
-} else {
-  setMode('focus');
-}
-ui(); render(); renderTodos();
+applyAppMode();
+loadTimer();
 
 // save the exact position when the tab is closed or hidden
 const flush = () => { tick(); saveTimer(); saveHistory(true); };

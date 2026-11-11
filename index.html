@@ -20,7 +20,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&family=Amiri:wght@700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-  <meta name="google-site-verification" content="hhUS7_WZx-R70Mf6j3j0p86jxtvvQnzOR3Ij1B_atz4" />
 </head>
 <body class="intro hold-brand">
   <div id="intro" class="intro-screen" aria-hidden="true"><div class="intro-bg"></div></div>
@@ -56,6 +55,8 @@
     </div>
   </header>
 
+  <p id="modeDesc" class="mode-desc"></p>
+
   <main class="layout">
     <section class="card timer-card">
       <div class="modes">
@@ -68,32 +69,33 @@
             <linearGradient id="gFocus" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5eead4"/><stop offset="1" stop-color="#3b82f6"/></linearGradient>
             <linearGradient id="gBreak" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbbf24"/><stop offset="1" stop-color="#f472b6"/></linearGradient>
           </defs>
-          <circle class="track" cx="150" cy="150" r="130"/>
-          <circle id="ring" class="ring" cx="150" cy="150" r="130" transform="rotate(-90 150 150)"/>
+          <g id="ringG"></g>
+          <circle id="brkT" class="track thin" cx="150" cy="150" r="112" style="display:none"/>
+          <circle id="brkR" class="brk-ring" cx="150" cy="150" r="112" transform="rotate(-90 150 150)" style="display:none"/>
         </svg>
         <div class="dial-text">
-          <div id="time" class="time">…</div>
+          <div id="time" class="time">00:00</div>
         </div>
       </div></div>
 
-      <p id="sub" class="sub">جاهز للبدء</p>
+      <p id="sub" class="sub"></p>
 
       <div class="controls">
         <button id="startBtn" class="main-btn go">بدء</button>
+        <button id="nextBtn" class="main-btn go" hidden>بدء المهمة الجديدة</button>
+        <button id="endBtn" class="sec-btn" hidden>إنهاء المؤقت</button>
+        <button id="resetBtn" class="sec-btn round" type="button" aria-label="تصفير المؤقت" title="تصفير المؤقت"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></button>
       </div>
 
-      <!-- وقت التركيز صار يُؤخذ من وقت المهمة، لذلك أُزيلت خانته -->
-      <div class="settings">
-        <label>وقت الراحة (د)
-          <input id="breakMin" type="number" min="1" max="60" value="5">
-        </label>
-        <label>راحة طويلة (د)
-          <input id="longMin" type="number" min="1" max="120" value="15">
-        </label>
-        <label>راحة طويلة بعد (دورات)
-          <input id="longEvery" type="number" min="2" max="12" value="4">
-        </label>
+      <!-- وضع البومودورو: تركيز وراحة بالساعات والدقائق -->
+      <div id="pomoSet" class="pomo-set" hidden>
+        <div class="tf-field"><span>التركيز</span>
+          <div class="hm"><input id="pFocusH" type="number" min="0" max="23" inputmode="numeric" placeholder="0" aria-label="ساعات التركيز"><i>س</i><input id="pFocusM" type="number" min="0" max="59" inputmode="numeric" placeholder="0" aria-label="دقائق التركيز"><i>د</i></div></div>
+        <div class="tf-field"><span>الراحة</span>
+          <div class="hm"><input id="pBreakH" type="number" min="0" max="23" inputmode="numeric" placeholder="0" aria-label="ساعات الراحة"><i>س</i><input id="pBreakM" type="number" min="0" max="59" inputmode="numeric" placeholder="0" aria-label="دقائق الراحة"><i>د</i></div></div>
       </div>
+
+      <button id="modeBtn" class="mode-switch" type="button"></button>
     </section>
 
     <aside class="side">
@@ -105,8 +107,9 @@
           </svg>
           <div id="aPct" class="pct">0%</div>
         </div>
+        <button id="clearAch" class="clear-ach" type="button" aria-label="تصفير عداد الإنجاز" title="تصفير عداد الإنجاز"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
         <div class="a-info">
-          <h2>إنجازك لهذا اليوم</h2>
+          <h2 id="aTitle">تقدّمك في المهام</h2>
           <div id="aTime" class="a-time">00:00:00</div>
           <p id="aOf" class="a-of"></p>
         </div>
@@ -114,18 +117,36 @@
 
       <div class="pair">
       <section class="card todo">
-        <h2>المهام</h2>
-        <div class="add-box">
+        <div class="todo-head">
+          <h2>المهام</h2>
+          <button id="addToggle" class="add-task-btn" type="button" aria-expanded="false" aria-controls="taskForm"><b>+</b> إضافة مهمة</button>
+        </div>
+
+        <!-- وضع المهام: مربع المهمة -->
+        <form id="taskForm" class="task-form" hidden autocomplete="off">
+          <input id="tfName" type="text" placeholder="اسم المهمة" maxlength="80" aria-label="اسم المهمة">
+          <div class="tf-grid">
+            <div class="tf-field"><span>وقت المهمة</span>
+              <div class="hm"><input id="tfH" type="number" min="0" max="24" placeholder="0" inputmode="numeric" aria-label="ساعات"><i>س</i><input id="tfM" type="number" min="0" max="59" placeholder="0" inputmode="numeric" aria-label="دقائق"><i>د</i></div></div>
+            <div class="tf-field"><span>تقسيم المهمة</span>
+              <div class="hm"><input id="tfParts" type="number" min="1" max="12" value="1" inputmode="numeric" aria-label="عدد الأجزاء"><i>أجزاء</i></div></div>
+            <div id="tfBrkWrap" class="tf-field" hidden><span>فترات الراحة</span>
+              <div class="hm"><input id="tfBrk" type="number" min="0" max="240" value="5" inputmode="numeric" aria-label="دقائق الراحة"><i>د</i></div></div>
+          </div>
+          <div class="tf-actions">
+            <button type="submit" class="tf-submit">إضافة المهمة</button>
+            <button type="button" id="tfCancel" class="q-btn">إلغاء</button>
+          </div>
+        </form>
+
+        <!-- وضع البومودورو: مهمة بسيطة -->
+        <div id="simpleForm" class="add-box" hidden>
           <input id="todoInput" type="text" placeholder="أضف مهمة جديدة…" maxlength="80" aria-label="المهمة">
           <button id="addBtn" class="add-btn" aria-label="إضافة المهمة" hidden>+</button>
-          <div class="add-time">
-            <span>سأنجزها في غضون</span>
-            <input id="todoH" type="number" min="0" max="12" placeholder="0" inputmode="numeric" aria-label="ساعات"><span>س</span>
-            <input id="todoMin" type="number" min="0" max="59" placeholder="0" inputmode="numeric" aria-label="دقائق"><span>د</span>
-          </div>
         </div>
+
         <ul id="todoList"></ul>
-        <p id="empty" class="empty">لا توجد مهام بعد. اكتب أول مهمة وابدأ.</p>
+        <p id="empty" class="empty"></p>
       </section>
 
       <section class="card notes">
@@ -184,6 +205,19 @@
   </footer>
 
   <div id="overlay" class="overlay"></div>
+
+  <div id="confirm" class="modal" hidden>
+    <div class="modal-bg" data-close></div>
+    <div class="modal-box" role="alertdialog" aria-modal="true" aria-labelledby="cfTitle" aria-describedby="cfText">
+      <div class="modal-ico"><svg viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18.2v.01"/></svg></div>
+      <h3 id="cfTitle">تصفير عداد الإنجاز</h3>
+      <p id="cfText">سيتم تصفير الوقت المنجز والنسبة المئوية وتقدّم المهام. الإحصائيات لن تتأثر.</p>
+      <div class="modal-actions">
+        <button id="cfYes" class="modal-yes" type="button">نعم، صفّره</button>
+        <button id="cfNo" class="modal-no" type="button" data-close>إلغاء</button>
+      </div>
+    </div>
+  </div>
 
   <aside id="drawer" class="drawer" aria-hidden="true" aria-label="الإعدادات">
     <div class="drawer-head">
