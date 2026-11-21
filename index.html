@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>همّه</title>
-  <meta name="description" content="همّه — مساعدك في الدراسة، مؤقت بومودورو (Pomodoro) مع أصوات هادئة وإحصائيات وملاحظات.">
-  <meta name="keywords" content="همّه, Himma, همه, بومودورو, Pomodoro">
+  <title>منصة همّة</title>
+  <meta name="description" content="منصة همّة — مؤقت بومودورو (Pomodoro) ومهام مقسّمة مع أصوات هادئة وإحصائيات.">
+  <meta name="keywords" content="منصة همّة, همّة, تركيز, بومودورو, Pomodoro">
   <link rel="icon" type="image/png" href="img/logo-round.png">
   <link rel="apple-touch-icon" href="img/logo.png">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="همّه">
-  <meta property="og:description" content="همّه — مساعدك في الدراسة، مؤقت بومودورو (Pomodoro).">
+  <meta property="og:title" content="منصة همّة">
+  <meta property="og:description" content="منصة همّة — مؤقت بومودورو (Pomodoro) ومهام مقسّمة.">
   <meta property="og:image" content="https://abo-shaheen-developer.github.io/Himma/img/cover.png">
   <meta property="og:image:width" content="1774">
   <meta property="og:image:height" content="887">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="همّه">
+  <meta name="twitter:title" content="منصة همّة">
   <meta name="twitter:image" content="https://abo-shaheen-developer.github.io/Himma/img/cover.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&family=Amiri:wght@700&display=swap" rel="stylesheet">
@@ -26,21 +26,21 @@
   <div class="bg"><span class="orb o1"></span><span class="orb o2"></span><span class="orb o3"></span></div>
 
   <header class="top">
-    <h1><span class="brand">همّة</span><span class="tag">، مساعدك في الدراسة</span></h1>
+    <h1><span class="brand">منصة همّة</span></h1>
 
     <!-- الأصوات: في مستطيل -->
     <div class="sounds" role="group" aria-label="أصوات الخلفية">
       <button class="snd" data-sound="rain" aria-pressed="false" title="صوت المطر">
-        <svg viewBox="0 0 24 24"><path d="M6.5 14a4.5 4.5 0 1 1 1.1-8.8A5.5 5.5 0 0 1 17.8 7.4 3.8 3.8 0 0 1 17.5 14z"/><path d="M8 17.5l-1 2.5M12 17.5l-1 2.5M16 17.5l-1 2.5"/></svg><span>مطر</span>
+        <svg viewBox="0 0 24 24"><path d="M6.5 14a4.5 4.5 0 1 1 1.1-8.8A5.5 5.5 0 0 1 17.8 7.4 3.8 3.8 0 0 1 17.5 14z"/><path class="drop" d="M8 17.5l-1 2.5"/><path class="drop" d="M12 17.5l-1 2.5"/><path class="drop" d="M16 17.5l-1 2.5"/></svg><span>صوت المطر</span>
       </button>
       <button class="snd" data-sound="waves" aria-pressed="false" title="صوت الأمواج">
-        <svg viewBox="0 0 24 24"><path d="M2 8c2.5-3 4.5-3 7 0s4.5 3 7 0 3.5-2.5 6 0"/><path d="M2 13c2.5-3 4.5-3 7 0s4.5 3 7 0 3.5-2.5 6 0"/><path d="M2 18c2.5-3 4.5-3 7 0s4.5 3 7 0 3.5-2.5 6 0"/></svg><span>أمواج</span>
+        <svg class="wave" viewBox="0 0 24 24"><path d="M2 8c2.5-3 4.5-3 7 0s4.5 3 7 0 3.5-2.5 6 0"/><path d="M2 13c2.5-3 4.5-3 7 0s4.5 3 7 0 3.5-2.5 6 0"/><path d="M2 18c2.5-3 4.5-3 7 0s4.5 3 7 0 3.5-2.5 6 0"/></svg><span>صوت الأمواج</span>
       </button>
     </div>
 
-    <!-- الإحصائيات: زر وحده (الملاحظات ثابتة في الصفحة) -->
+    <!-- الإحصائيات ونصائح الدراسة -->
     <button id="statsBtn" class="top-btn" aria-controls="stats">
-      <svg viewBox="0 0 24 24"><path d="M3 21h18"/><rect x="5" y="11" width="3.5" height="10" rx="1"/><rect x="10.25" y="5" width="3.5" height="16" rx="1"/><rect x="15.5" y="14" width="3.5" height="7" rx="1"/></svg><span>الإحصائيات</span>
+      <svg viewBox="0 0 24 24"><path d="M3 21h18"/><rect class="b1" x="5" y="11" width="3.5" height="10" rx="1"/><rect class="b2" x="10.25" y="5" width="3.5" height="16" rx="1"/><rect class="b3" x="15.5" y="14" width="3.5" height="7" rx="1"/></svg><span>الإحصائيات والإنجازات</span>
     </button>
 
     <!-- الثيم والإعدادات: في مربع -->
@@ -51,14 +51,18 @@
       <button id="themeBtn" class="icon-btn" aria-label="تبديل الوضع">
         <svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg>
         <svg class="moon" viewBox="0 0 24 24"><path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z"/></svg>
+        <svg class="cloud c1" viewBox="0 0 24 24"><path d="M6 18a3.2 3.2 0 0 1 .2-6.4A4.5 4.5 0 0 1 14.800 10.600 3.700 3.700 0 0 1 17 18z"/></svg>
+        <svg class="cloud c2" viewBox="0 0 24 24"><path d="M6 18a3.2 3.2 0 0 1 .2-6.4A4.5 4.5 0 0 1 14.800 10.600 3.700 3.700 0 0 1 17 18z"/></svg>
       </button>
     </div>
   </header>
 
-  <p id="modeDesc" class="mode-desc"></p>
-
   <main class="layout">
     <section class="card timer-card">
+      <button id="zoomBtn" class="zoom-btn" type="button" aria-label="تكبير المؤقت" title="تكبير / تصغير">
+        <svg class="z-in" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+        <svg class="z-out" viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
+      </button>
       <div class="modes">
         <span id="modeLabel" class="mode-pill">تركيز</span>
       </div>
@@ -66,7 +70,7 @@
       <div class="dial-wrap"><div class="dial">
         <svg viewBox="0 0 300 300">
           <defs>
-            <linearGradient id="gFocus" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5eead4"/><stop offset="1" stop-color="#3b82f6"/></linearGradient>
+            <linearGradient id="gFocus" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--accent)"/><stop offset="1" style="stop-color:var(--accent2)"/></linearGradient>
             <linearGradient id="gBreak" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbbf24"/><stop offset="1" stop-color="#f472b6"/></linearGradient>
           </defs>
           <g id="ringG"></g>
@@ -83,7 +87,6 @@
       <div class="controls">
         <button id="startBtn" class="main-btn go">بدء</button>
         <button id="nextBtn" class="main-btn go" hidden>بدء المهمة الجديدة</button>
-        <button id="endBtn" class="sec-btn" hidden>إنهاء المؤقت</button>
         <button id="resetBtn" class="sec-btn round" type="button" aria-label="تصفير المؤقت" title="تصفير المؤقت"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></button>
       </div>
 
@@ -99,22 +102,6 @@
     </section>
 
     <aside class="side">
-      <section class="card achieve">
-        <div class="mini-dial">
-          <svg viewBox="0 0 100 100">
-            <circle class="track" cx="50" cy="50" r="42"/>
-            <circle id="aRing" class="ring a" cx="50" cy="50" r="42" transform="rotate(-90 50 50)"/>
-          </svg>
-          <div id="aPct" class="pct">0%</div>
-        </div>
-        <button id="clearAch" class="clear-ach" type="button" aria-label="تصفير عداد الإنجاز" title="تصفير عداد الإنجاز"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
-        <div class="a-info">
-          <h2 id="aTitle">تقدّمك في المهام</h2>
-          <div id="aTime" class="a-time">00:00:00</div>
-          <p id="aOf" class="a-of"></p>
-        </div>
-      </section>
-
       <div class="pair">
       <section class="card todo">
         <div class="todo-head">
@@ -146,13 +133,13 @@
         </div>
 
         <ul id="todoList"></ul>
-        <p id="empty" class="empty"></p>
+        <div id="restTip" class="rest-tip" role="status" hidden>
+          <svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1.1 1.3 1.1 2.2h5c0-.9.5-1.7 1.1-2.2A6 6 0 0 0 12 3z"/></svg>
+          <span>ننصحك بوضع أوقات راحة حفاظًا على تركيزك</span>
+          <button id="restTipX" class="rt-x" type="button" aria-label="إخفاء النصيحة">×</button>
+        </div>
       </section>
 
-      <section class="card notes">
-        <h2>الملاحظات</h2>
-        <textarea id="notes" placeholder="اكتب ملاحظاتك هنا…" spellcheck="false"></textarea>
-      </section>
       </div>
     </aside>
   </main>
@@ -160,64 +147,49 @@
   <!-- الإحصائيات: تأخذ الصفحة كلها عند فتحها -->
   <section id="stats" class="stats" hidden aria-label="الإحصائيات">
     <div class="stats-head">
-      <h2>الإحصائيات</h2>
-      <span id="stLive" class="st-live" hidden></span>
+      <h2>الإحصائيات والإنجازات</h2>
+      <button id="tipsBtn" class="top-btn" type="button" aria-controls="tips">
+        <svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1.1 1.3 1.1 2.2h5c0-.9.5-1.7 1.1-2.2A6 6 0 0 0 12 3z"/></svg><span>أهم نصائح الدراسة</span>
+      </button>
       <button id="statsClose" class="top-btn" aria-label="إغلاق الإحصائيات">
         <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg><span>إغلاق</span>
       </button>
     </div>
-
-    <div class="stats-grid">
-      <section class="card st-ov">
-        <div class="wk-nav">
-          <button id="wkPrev" class="icon-btn sm" aria-label="الأسبوع السابق"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
-          <div class="wk-title"><b id="wkTitle"></b><small id="wkRange"></small></div>
-          <button id="wkNext" class="icon-btn sm" aria-label="الأسبوع التالي"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
-        </div>
-        <div id="wkTiles" class="tiles"></div>
-        <div id="wkChart" class="chart"></div>
-      </section>
-
-      <section class="card st-days">
-        <h3>مقارنة الأيام</h3>
-        <p class="st-sub">كل يوم مقابل اليوم الذي قبله</p>
-        <ul id="dayList"></ul>
-      </section>
-
-      <section class="card st-weeks">
-        <h3>كل الأسابيع</h3>
-        <p id="allSub" class="st-sub"></p>
-        <ul id="weekList"></ul>
-      </section>
-    </div>
+    <section class="card st-ov">
+      <div class="wk-nav">
+        <button id="wkCur" class="top-btn" type="button" style="visibility:hidden"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg><span>الأسبوع الحالي</span></button>
+        <button id="wkPrev" class="top-btn" type="button"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg><span>الأسبوع الماضي</span></button>
+      </div>
+      <div id="wkChart" class="chart"></div>
+    </section>
+    <section id="tips" class="tips" hidden aria-label="أهم نصائح الدراسة">
+      <div class="stats-head">
+        <h2>أهم نصائح الدراسة</h2>
+        <button id="tipsClose" class="top-btn" type="button" aria-label="رجوع">
+          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg><span>رجوع</span>
+        </button>
+      </div>
+      <div id="tipList" class="tip-list"></div>
+    </section>
   </section>
 
   <footer class="salawat">
-    <span class="orn"></span>
-    <br>
     <p id="rotatingDua" aria-live="polite"></p>
-    <span class="orn"></span>
   </footer>
 
   <footer class="credit">
     <a class="credit-link" href="https://abo-shaheen-developer.github.io/My-Portfolio/" target="_blank" rel="noopener noreferrer">تم تطويره بواسطة <bdi dir="ltr">Abo Shaheen</bdi></a>
-    <span class="credit-copy">© جميع الحقوق محفوظة — <bdi dir="ltr">Abo Shaheen</bdi></span>
   </footer>
 
-  <div id="overlay" class="overlay"></div>
-
-  <div id="confirm" class="modal" hidden>
-    <div class="modal-bg" data-close></div>
-    <div class="modal-box" role="alertdialog" aria-modal="true" aria-labelledby="cfTitle" aria-describedby="cfText">
-      <div class="modal-ico"><svg viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18.2v.01"/></svg></div>
-      <h3 id="cfTitle">تصفير عداد الإنجاز</h3>
-      <p id="cfText">سيتم تصفير الوقت المنجز والنسبة المئوية وتقدّم المهام. الإحصائيات لن تتأثر.</p>
-      <div class="modal-actions">
-        <button id="cfYes" class="modal-yes" type="button">نعم، صفّره</button>
-        <button id="cfNo" class="modal-no" type="button" data-close>إلغاء</button>
-      </div>
+  <div id="support" class="support">
+    <p class="sup-note">إذا عندك مشكلة في المنصة أو اقتراح تواصل معنا</p>
+    <div class="sup-row">
+      <button id="supportBtn" class="sup-btn" type="button" aria-expanded="false" aria-controls="supMail">دعم</button>
+      <a id="supMail" class="sup-mail" href="mailto:Abo.Shaheen.Developer@Gmail.com" dir="ltr">Abo.Shaheen.Developer@Gmail.com</a>
     </div>
   </div>
+
+  <div id="overlay" class="overlay"></div>
 
   <aside id="drawer" class="drawer" aria-hidden="true" aria-label="الإعدادات">
     <div class="drawer-head">
@@ -233,11 +205,23 @@
       <span><b>بدء الراحة تلقائيًا</b><small>تبدأ الراحة مباشرة بعد انتهاء التركيز</small></span>
       <span class="switch"><input id="autoBreak" type="checkbox" role="switch"><i></i></span>
     </label>
+    <label class="switch-row">
+      <span><b>إبقاء الشاشة مضيئة</b><small>لا تنطفئ الشاشة أثناء تشغيل المؤقت</small></span>
+      <span class="switch"><input id="wake" type="checkbox" role="switch" checked><i></i></span>
+    </label>
     <h3 class="group">المظهر</h3>
     <label class="switch-row">
-      <span><b>التأثيرات البصرية</b><small>الألوان المتدرجة والحركة وموجة تبديل الثيم</small></span>
+      <span><b>التأثيرات البصرية</b><small>الألوان المتدرجة والحركة والإضاءة وموجة تبديل الثيم</small></span>
       <span class="switch"><input id="fx" type="checkbox" role="switch" checked><i></i></span>
     </label>
+    <div id="themeBox" class="theme-box">
+      <button id="themeToggle" class="switch-row theme-head" type="button" aria-expanded="false" aria-controls="themeList">
+        <span><b>الثيم</b><small id="themeName">أزرق</small></span>
+        <span id="themeCur" class="theme-cur"></span>
+        <svg class="theme-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div id="themeList" class="theme-list"><div class="theme-in" role="radiogroup" aria-label="الثيم"></div></div>
+    </div>
   </aside>
 
   <script src="script.js"></script>
