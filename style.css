@@ -576,3 +576,33 @@ body.zoomed .dial-wrap{flex:1 1 0;height:auto;min-height:0}
 .round-back[hidden]{display:none}
 .tips[hidden]{display:none}
 .tips-soon{min-height:50dvh;display:grid;place-items:center;text-align:center;font-size:clamp(1.2rem,4vw,1.7rem);font-weight:800;color:var(--muted)}
+
+/* ===== Overall progress box inside the tasks card ===== */
+.prog{margin-bottom:12px}
+.prog[hidden]{display:none}
+.prog-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.prog-title{font-weight:800;font-size:.95rem}
+.prog-tg{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--border);background:var(--track);color:var(--text);cursor:pointer;transition:.3s}
+.prog-tg:hover{border-color:var(--accent);box-shadow:0 0 12px rgba(var(--accr),.45)}
+.prog-tg svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;transition:transform .4s cubic-bezier(.2,.8,.2,1)}
+.prog-tg[aria-expanded="false"] svg{transform:rotate(180deg)}
+.prog-body{display:grid;grid-template-rows:1fr;opacity:1;transition:grid-template-rows .4s cubic-bezier(.2,.8,.2,1),opacity .3s ease}
+.prog-in{overflow:hidden;min-height:0}
+.prog.closed .prog-body{grid-template-rows:0fr;opacity:0}
+.prog-box{padding:12px 14px;border-radius:16px;background:var(--track);border:1px solid var(--border)}
+.prog-box{display:grid;place-items:center}
+.ring{position:relative;width:104px;height:104px}
+.ring svg{width:100%;height:100%;display:block}
+.ring circle{fill:none;stroke-width:8;stroke-linecap:round}
+.ring-bg{stroke:var(--border)}
+.ring-fg{stroke:var(--accent);stroke-dasharray:100;stroke-dashoffset:100;transition:stroke-dashoffset .5s ease;filter:drop-shadow(0 0 5px rgba(var(--accr),.6))}
+.ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:1.25rem;font-weight:800;font-variant-numeric:tabular-nums;direction:ltr}
+body.no-fx .ring-fg{filter:none}
+/* rest advice: floats under the tasks card, outside the layout flow (nothing moves when it shows) */
+.pair{position:relative}
+.pair>.rest-tip{position:absolute;top:calc(100% + 12px);left:0;right:0;z-index:30;margin:0;
+  background:linear-gradient(rgba(251,191,36,.16),rgba(251,191,36,.16)),var(--card);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 10px 30px rgba(0,0,0,.35);
+  animation:tipIn .55s cubic-bezier(.2,.8,.2,1) both}
+[data-theme="light"] .pair>.rest-tip{background:linear-gradient(rgba(251,191,36,.22),rgba(251,191,36,.22)),var(--card);box-shadow:0 10px 26px rgba(120,80,0,.2)}
+@keyframes tipIn{from{opacity:0;transform:translateY(-14px) scale(.96)}to{opacity:1;transform:none}}

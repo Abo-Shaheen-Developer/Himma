@@ -588,7 +588,33 @@ function renderTodos(){
   updateTaskBars(); renderAchieve();
 }
 
+/* overall progress of all the tasks in the current mode (shown from 2 tasks up) */
+const progWrap = $('progWrap');
+progWrap.classList.toggle('closed', !store.get('progOpen', true));
+$('progToggle').setAttribute('aria-expanded', String(!progWrap.classList.contains('closed')));
+$('progToggle').onclick = () => {
+  const open = progWrap.classList.contains('closed');
+  progWrap.classList.toggle('closed', !open);
+  $('progToggle').setAttribute('aria-expanded', String(open));
+  $('progToggle').setAttribute('aria-label', open ? 'إخفاء تقدمك في المهام' : 'إظهار تقدمك في المهام');
+  store.set('progOpen', open);
+};
+function updateOverall(){
+  const tasks = appMode === 'tasks', list = tasks ? todos : [...ptodos, ...todos];
+  progWrap.hidden = list.length < 2;
+  if (progWrap.hidden) return;
+  let frac;
+  if (tasks) {      // weighted by each task's time
+    const tot = list.reduce((a, t) => a + taskMs(t), 0);
+    frac = tot ? list.reduce((a, t) => a + taskProg(t), 0) / tot : 0;
+  } else frac = list.filter(t => t.done).length / list.length;   // pomodoro: ticked tasks
+  const done = Math.max(0, Math.min(100, Math.floor(frac * 100)));
+  $('progPct').textContent = done + '%';
+  $('progFill').style.strokeDashoffset = 100 - done;
+}
+
 function updateTaskBars(){
+  updateOverall();
   for (const id in taskEls) {
     const t = taskById(id); if (!t) continue;
     const e = taskEls[id], prog = taskProg(t);
