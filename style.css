@@ -283,7 +283,7 @@ body.no-fx .salawat p{background:none!important;color:#f59e0b!important;filter:n
 *::-webkit-scrollbar{display:none;width:0;height:0}
 
 /* ===== Entrance animation ===== */
-.sounds{--d:.05s}#notesBtn{--d:.1s}#statsBtn{--d:.14s}#tipsBtn{--d:.16s}.tools{--d:.18s}.timer-card{--d:.1s}.achieve{--d:.22s}.todo{--d:.34s}.salawat{--d:.6s}
+.sounds{--d:.05s}#notesBtn{--d:.1s}#statsBtn{--d:.14s}.tools{--d:.18s}.timer-card{--d:.1s}.achieve{--d:.22s}.todo{--d:.34s}.salawat{--d:.6s}
 body.intro .card,body.intro .sounds,body.intro .tools,body.intro .top-btn,body.intro .salawat,body.intro .credit{opacity:0}
 body:not(.intro) :is(.card,.sounds,.tools,.top-btn,.salawat,.credit){animation:rise .9s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--d,0s)}
 body.hold-brand .brand{visibility:hidden}
@@ -469,14 +469,6 @@ html[data-color="mono"]{filter:grayscale(1)}
 .plot{height:clamp(200px,46dvh,400px)}
 body.stats-open{justify-content:flex-start}
 
-/* ===== Study tips: rectangles stacked, all the same width ===== */
-.tips[hidden]{display:none}
-.tip-list{display:grid;gap:12px;padding-bottom:20px}
-.tip{display:flex;align-items:flex-start;gap:16px;width:100%;padding:16px 20px}
-.tip-n{flex:none;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-weight:800;color:var(--accent);background:rgba(var(--accr),.12);border:1px solid var(--accent)}
-[data-theme="light"] .tip-n{color:var(--ink);border-color:var(--ink)}
-.tip h3{font-size:1.05rem;font-weight:800;margin-bottom:4px}
-.tip p{color:var(--muted);font-size:.92rem;line-height:1.8}
 .top-btn:disabled{opacity:.4;cursor:not-allowed;color:var(--muted);border-color:var(--border)}
 .top-btn:disabled:hover{transform:none;box-shadow:none}
 .stats-head .top-btn,.wk-nav .top-btn{flex:0 0 auto}
@@ -574,3 +566,13 @@ body.zoomed{height:100dvh;overflow:hidden}
 body.zoomed .layout{height:calc(100dvh - 28px);align-items:stretch}
 body.zoomed .timer-card{height:100%;display:flex;flex-direction:column;min-height:0}
 body.zoomed .dial-wrap{flex:1 1 0;height:auto;min-height:0}
+
+/* ===== Study tips page ===== */
+.crumbs{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.round-back{flex:none;width:var(--hb,44px);height:var(--hb,44px);border-radius:50%;display:grid;place-items:center;border:1px solid var(--accent);background:rgba(var(--accr),.12);color:var(--accent);cursor:pointer;transition:.3s;text-shadow:none}
+.round-back svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.round-back:hover{transform:translateY(-2px);box-shadow:0 0 16px rgba(var(--accr),.55)}
+[data-theme="light"] .round-back{color:var(--ink);border-color:var(--ink)}
+.round-back[hidden]{display:none}
+.tips[hidden]{display:none}
+.tips-soon{min-height:50dvh;display:grid;place-items:center;text-align:center;font-size:clamp(1.2rem,4vw,1.7rem);font-weight:800;color:var(--muted)}

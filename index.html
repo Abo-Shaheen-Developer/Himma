@@ -38,7 +38,7 @@
       </button>
     </div>
 
-    <!-- الإحصائيات ونصائح الدراسة -->
+    <!-- الإحصائيات -->
     <button id="statsBtn" class="top-btn" aria-controls="stats">
       <svg viewBox="0 0 24 24"><path d="M3 21h18"/><rect class="b1" x="5" y="11" width="3.5" height="10" rx="1"/><rect class="b2" x="10.25" y="5" width="3.5" height="16" rx="1"/><rect class="b3" x="15.5" y="14" width="3.5" height="7" rx="1"/></svg><span>الإحصائيات والإنجازات</span>
     </button>
@@ -147,7 +147,13 @@
   <!-- الإحصائيات: تأخذ الصفحة كلها عند فتحها -->
   <section id="stats" class="stats" hidden aria-label="الإحصائيات">
     <div class="stats-head">
-      <h2>الإحصائيات والإنجازات</h2>
+      <h2 class="crumbs">
+        <button id="tipsBack" class="round-back" type="button" aria-label="رجوع" hidden>
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+        <span id="statsTitle">الإحصائيات والإنجازات</span>
+        <span id="tipsCrumb" hidden>أهم نصائح الدراسة</span>
+      </h2>
       <button id="tipsBtn" class="top-btn" type="button" aria-controls="tips">
         <svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1.1 1.3 1.1 2.2h5c0-.9.5-1.7 1.1-2.2A6 6 0 0 0 12 3z"/></svg><span>أهم نصائح الدراسة</span>
       </button>
@@ -163,13 +169,7 @@
       <div id="wkChart" class="chart"></div>
     </section>
     <section id="tips" class="tips" hidden aria-label="أهم نصائح الدراسة">
-      <div class="stats-head">
-        <h2>أهم نصائح الدراسة</h2>
-        <button id="tipsClose" class="top-btn" type="button" aria-label="رجوع">
-          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg><span>رجوع</span>
-        </button>
-      </div>
-      <div id="tipList" class="tip-list"></div>
+      <p class="tips-soon">سيتم إضافتها قريبًا ❤️</p>
     </section>
   </section>
 

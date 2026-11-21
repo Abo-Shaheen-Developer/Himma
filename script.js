@@ -612,11 +612,14 @@ const tf = { form: $('taskForm'), name: $('tfName'), h: $('tfH'), m: $('tfM'), p
 const shake = box => { box.classList.remove('bad'); void box.offsetWidth; box.classList.add('bad'); };
 const clearBad = e => e.target.closest('.bad') && e.target.closest('.bad').classList.remove('bad');
 function toggleTaskForm(open){
-  tf.form.hidden = !open;
+  // same "+ إضافة مهمة" button in both modes: tasks mode opens the full form, pomodoro mode opens the simple name box
+  const simple = appMode !== 'tasks';
+  tf.form.hidden = simple || !open;
+  $('simpleForm').hidden = !simple || !open;
   $('addToggle').setAttribute('aria-expanded', String(open));
-  if (open) tf.name.focus();
+  if (open) (simple ? $('todoInput') : tf.name).focus();
 }
-$('addToggle').onclick = () => toggleTaskForm(tf.form.hidden);
+$('addToggle').onclick = () => toggleTaskForm($('addToggle').getAttribute('aria-expanded') !== 'true');
 $('tfCancel').onclick = () => toggleTaskForm(false);
 tf.parts.addEventListener('input', () => { tf.brkWrap.hidden = (parseInt(tf.parts.value) || 1) < 2; });
 tf.form.addEventListener('input', clearBad);
@@ -643,8 +646,10 @@ function addSimple(){
   const t = { id: uid(), text: v, done: false };
   ptodos.unshift(t); justAdded = t.id; savePTodos();
   todoIn.value = ''; $('addBtn').hidden = true;
+  toggleTaskForm(false);
   renderTodos();
 }
+todoIn.addEventListener('keydown', e => { if (e.key === 'Escape') toggleTaskForm(false); });
 todoIn.addEventListener('input', () => { $('addBtn').hidden = !todoIn.value.trim(); });
 $('addBtn').onclick = addSimple;
 todoIn.addEventListener('keydown', e => { if (e.key === 'Enter') addSimple(); });
@@ -654,8 +659,8 @@ function applyAppMode(){
   const tasks = appMode === 'tasks', b = document.body;
   b.classList.toggle('m-tasks', tasks); b.classList.toggle('m-pomo', !tasks);
   $('pomoSet').hidden = tasks;
-  $('addToggle').hidden = !tasks; if (!tasks) tf.form.hidden = true;
-  $('simpleForm').hidden = tasks;
+  $('addToggle').hidden = false;
+  toggleTaskForm(false); // both forms start closed, the list area looks the same in both modes
   if (!tasks) restTip.hidden = true;
   $('modeBtn').textContent = tasks ? 'استخدام ساعة البومودورو بدلًا من هذا' : 'استخدام وضع المهام بدلًا من هذا';
 }
@@ -704,10 +709,14 @@ function renderStats(anim){
   if (statsEl.hidden) return;
   statsEl.classList.toggle('anim', !!anim);
   const n = new Date(), td = new Date(n.getFullYear(), n.getMonth(), n.getDate());
+  // "last week" is offered only when there is some recorded time in it
+  const pws = addDays(startOfWeek(td), -7);
+  const hasPrev = Array.from({ length: 7 }, (_, i) => dayMs(addDays(pws, i))).some(v => v > 0);
+  if (lastWeek && !hasPrev) lastWeek = false;
   const ws = addDays(startOfWeek(td), lastWeek ? -7 : 0);
   const days = Array.from({ length: 7 }, (_, i) => addDays(ws, i)), vals = days.map(dayMs);
 
-  $('wkPrev').style.visibility = lastWeek ? 'hidden' : 'visible';
+  $('wkPrev').style.visibility = !lastWeek && hasPrev ? 'visible' : 'hidden';
   $('wkCur').style.visibility = lastWeek ? 'visible' : 'hidden';
 
   const max = Math.max(...vals, 3600000);
@@ -769,32 +778,25 @@ $('supportBtn').onclick = () => {
   $('support').classList.toggle('open', on); $('supportBtn').setAttribute('aria-expanded', String(on));
 };
 
-/* ---------- Top study tips: a separate area of stacked rectangles ---------- */
-const TIPS = [
-  ['ذاكر على فترات قصيرة', 'قسّم وقتك إلى جلسات تركيز من 25 إلى 50 دقيقة تتخللها راحة قصيرة؛ العقل يركّز أكثر حين يعرف أن للجلسة نهاية.'],
-  ['ابدأ بالأصعب', 'خصّص أول جلساتك للمادة الأثقل عليك وأنت في أعلى نشاطك الذهني، وأبقِ الأسهل لآخر اليوم.'],
-  ['اختبر نفسك', 'بدل إعادة القراءة مرارًا، أغلق الكتاب وحاول استرجاع المعلومة من ذاكرتك؛ الاسترجاع النشط يثبّت المعلومة أكثر.'],
-  ['وزّع المذاكرة على الأيام', 'مراجعة الدرس على أيام متباعدة أقوى بكثير من حشوه كله في ليلة واحدة قبل الامتحان.'],
-  ['اجعل لكل جلسة هدفًا', 'قبل أن تبدأ، اكتب بوضوح ما الذي ستنجزه في هذه الجلسة، وبعد انتهائها قارن ما أنجزته بما خططت له.'],
-  ['أبعد المشتتات', 'ضع هاتفك بعيدًا عن نظرك أو أغلق إشعاراته، فمجرد وجوده أمامك يسحب جزءًا من تركيزك.'],
-  ['اشرح بكلماتك', 'حاول شرح الدرس لشخص آخر أو لنفسك بصوت مسموع، فالموضع الذي تتعثر فيه هو ما يحتاج مراجعة.'],
-  ['استفد من وقت الراحة', 'في الراحة قم وتحرك واشرب الماء وابتعد عن الشاشة، ولا تملأها بما يستهلك تركيزك مثل المقاطع القصيرة.'],
-  ['نم جيدًا', 'النوم الكافي (7–9 ساعات) هو الوقت الذي يثبّت فيه الدماغ ما تعلمته، والسهر للمذاكرة غالبًا يضيّع أكثر مما يكسب.']
-];
-$('tipList').innerHTML = TIPS.map(([h, t], i) => `<article class="card tip" style="--d:${(i * .06).toFixed(2)}s"><span class="tip-n">${i + 1}</span><div><h3>${h}</h3><p>${t}</p></div></article>`).join('');
+/* ---------- Study tips page (coming soon) ---------- */
 function openTips(){
-  tipsEl.hidden = false; $('tipsBtn').disabled = true;
+  if (!tipsEl.hidden) return;
+  tipsEl.hidden = false; statsEl.classList.add('in-tips');
+  $('tipsBtn').hidden = $('statsClose').hidden = true;
+  $('statsTitle').hidden = true; $('tipsBack').hidden = $('tipsCrumb').hidden = false;  // round back button + tips title
   document.querySelector('.st-ov').hidden = true;
-  window.scrollTo(0, 0); $('tipsClose').focus({ preventScroll: true });
+  window.scrollTo(0, 0);
 }
 function closeTips(){
   if (tipsEl.hidden) return;
-  tipsEl.hidden = true; $('tipsBtn').disabled = false;
+  tipsEl.hidden = true; statsEl.classList.remove('in-tips');
+  $('tipsBtn').hidden = $('statsClose').hidden = false;
+  $('statsTitle').hidden = false; $('tipsBack').hidden = $('tipsCrumb').hidden = true;
   document.querySelector('.st-ov').hidden = false;
   window.scrollTo(0, 0);
 }
 $('tipsBtn').onclick = openTips;
-$('tipsClose').onclick = () => { closeTips(); $('tipsBtn').focus({ preventScroll: true }); };
+$('tipsBack').onclick = closeTips;
 
 /* ---------- Zoom: only the timer, bigger ---------- */
 let zooming = false;
