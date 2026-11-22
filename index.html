@@ -86,25 +86,23 @@
 
       <div class="controls">
         <button id="startBtn" class="main-btn go">بدء</button>
-        <button id="nextBtn" class="main-btn go" hidden>بدء المهمة الجديدة</button>
         <button id="resetBtn" class="sec-btn round" type="button" aria-label="تصفير المؤقت" title="تصفير المؤقت"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></button>
       </div>
 
       <!-- وضع البومودورو: تركيز وراحة بالساعات والدقائق -->
-      <div id="pomoSet" class="pomo-set" hidden>
+      <div id="pomoSet" class="pomo-set">
         <div class="tf-field"><span>التركيز</span>
           <div class="hm"><input id="pFocusH" type="number" min="0" max="23" inputmode="numeric" placeholder="0" aria-label="ساعات التركيز"><i>س</i><input id="pFocusM" type="number" min="0" max="59" inputmode="numeric" placeholder="0" aria-label="دقائق التركيز"><i>د</i></div></div>
         <div class="tf-field"><span>الراحة</span>
           <div class="hm"><input id="pBreakH" type="number" min="0" max="23" inputmode="numeric" placeholder="0" aria-label="ساعات الراحة"><i>س</i><input id="pBreakM" type="number" min="0" max="59" inputmode="numeric" placeholder="0" aria-label="دقائق الراحة"><i>د</i></div></div>
       </div>
 
-      <button id="modeBtn" class="mode-switch" type="button"></button>
     </section>
 
     <aside class="side">
       <div class="pair">
       <section class="card todo">
-        <!-- تقدمك في المهام: يظهر لما يكون فيه أكتر من مهمة -->
+        <!-- تقدمك في المهام: عدد المنجز من الكل -->
         <div id="progWrap" class="prog" hidden>
           <div class="prog-head">
             <span class="prog-title">تقدمك في المهام</span>
@@ -114,40 +112,18 @@
           </div>
           <div id="progBody" class="prog-body"><div class="prog-in">
             <div class="prog-box">
-              <div class="ring" role="img" aria-label="نسبة التقدم">
-                <svg viewBox="0 0 100 100">
-                  <circle class="ring-bg" cx="50" cy="50" r="42" pathLength="100"/>
-                  <circle id="progFill" class="ring-fg" cx="50" cy="50" r="42" pathLength="100" transform="rotate(-90 50 50)"/>
-                </svg>
-                <b id="progPct">0%</b>
-              </div>
+              <div class="prog-count" id="progCount">0 من 0</div>
+              <div class="prog-track"><i id="progFill"></i></div>
             </div>
           </div></div>
         </div>
 
         <div class="todo-head">
           <h2>المهام</h2>
-          <button id="addToggle" class="add-task-btn" type="button" aria-expanded="false" aria-controls="taskForm"><b>+</b> إضافة مهمة</button>
+          <button id="addToggle" class="add-task-btn" type="button" aria-expanded="false" aria-controls="simpleForm"><b>+</b> إضافة مهمة</button>
         </div>
 
-        <!-- وضع المهام: مربع المهمة -->
-        <form id="taskForm" class="task-form" hidden autocomplete="off">
-          <input id="tfName" type="text" placeholder="اسم المهمة" maxlength="80" aria-label="اسم المهمة">
-          <div class="tf-grid">
-            <div class="tf-field"><span>وقت المهمة</span>
-              <div class="hm"><input id="tfH" type="number" min="0" max="24" placeholder="0" inputmode="numeric" aria-label="ساعات"><i>س</i><input id="tfM" type="number" min="0" max="59" placeholder="0" inputmode="numeric" aria-label="دقائق"><i>د</i></div></div>
-            <div class="tf-field"><span>تقسيم المهمة</span>
-              <div class="hm"><input id="tfParts" type="number" min="1" max="12" value="1" inputmode="numeric" aria-label="عدد الأجزاء"><i>أجزاء</i></div></div>
-            <div id="tfBrkWrap" class="tf-field" hidden><span>فترات الراحة</span>
-              <div class="hm"><input id="tfBrk" type="number" min="0" max="240" value="5" inputmode="numeric" aria-label="دقائق الراحة"><i>د</i></div></div>
-          </div>
-          <div class="tf-actions">
-            <button type="submit" class="tf-submit">إضافة المهمة</button>
-            <button type="button" id="tfCancel" class="q-btn">إلغاء</button>
-          </div>
-        </form>
-
-        <!-- وضع البومودورو: مهمة بسيطة -->
+        <!-- مربع إضافة مهمة -->
         <div id="simpleForm" class="add-box" hidden>
           <input id="todoInput" type="text" placeholder="أضف مهمة جديدة…" maxlength="80" aria-label="المهمة">
           <button id="addBtn" class="add-btn" aria-label="إضافة المهمة" hidden>+</button>
@@ -156,12 +132,6 @@
         <ul id="todoList"></ul>
       </section>
 
-        <!-- نصيحة الراحة: تطفو تحت مربع المهام من غير ما تغيّر حجم الصفحة -->
-        <div id="restTip" class="rest-tip" role="status" hidden>
-          <svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1.1 1.3 1.1 2.2h5c0-.9.5-1.7 1.1-2.2A6 6 0 0 0 12 3z"/></svg>
-          <span>ننصحك بوضع أوقات راحة حفاظًا على تركيزك</span>
-          <button id="restTipX" class="rt-x" type="button" aria-label="إخفاء النصيحة">×</button>
-        </div>
       </div>
     </aside>
   </main>
@@ -244,8 +214,25 @@
       </button>
       <div id="themeList" class="theme-list"><div class="theme-in" role="radiogroup" aria-label="الثيم"></div></div>
     </div>
+    <h3 class="group">حفظ البيانات</h3>
+    <div class="bk">
+      <small id="bkStatus"></small>
+      <div class="bk-row">
+        <button id="bkNew" class="q-btn" type="button">إنشاء ملف حفظ</button>
+        <button id="bkOpen" class="q-btn" type="button">ربط ملف موجود</button>
+        <button id="bkGrant" class="q-btn yes" type="button" hidden>تفعيل</button>
+        <button id="bkUnlink" class="q-btn" type="button" hidden>فصل الملف</button>
+      </div>
+      <div class="bk-row">
+        <button id="bkExport" class="q-btn" type="button">تصدير نسخة</button>
+        <button id="bkImport" class="q-btn" type="button">استيراد نسخة</button>
+        <input id="bkFile" type="file" accept=".js,.json,text/javascript" hidden>
+      </div>
+    </div>
   </aside>
 
+  <script src="hemma-data.js"></script><!-- اختياري: ملف بياناتك لو حطيته جنب index.html بيتحمّل تلقائيًا -->
+  <script src="backup.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
